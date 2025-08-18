@@ -14,9 +14,9 @@ For versions on a non release branch, devel-main :
 ---
 1) go to https://docs.netgate.com/pfsense/en/latest/releases/versions.html
 2) check the commit for your version. for example, pfSense CE 2.8.0 uses bf06074106cf \
-   git clone https://github.com/pfsense/FreeBSD-src.git /usr/src/
-3) git checkout bf06074106cf
-4) cd /usr/src/sys/modules/if_vxlan
+   git clone --branch devel-main https://github.com/pfsense/FreeBSD-src.git /usr/src
+3) cd /usr/src/sys/modules/if_vxlan
+4) git checkout bf06074106cf
 5) Run make
 You will find kernel module "if_vxlan.ko" file in /usr/obj/directory.
 See INSTALL.md to install it.
