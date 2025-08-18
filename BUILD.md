@@ -18,5 +18,5 @@ For versions on a non release branch, devel-main :
 3) cd FreeBSD-src/sys/modules/if_vxlan
 4) git checkout bf06074106cf
 5) Run make
-You will find kernel module "if_vxlan.ko" file in /usr/obj/<src>/<arch>/sys/modules/if_vxlan/ directory.
+You will find kernel module "if_vxlan.ko" file in /usr/obj/\<src>/\<arch>/sys/modules/if_vxlan/ directory.
 See INSTALL.md to install it.
