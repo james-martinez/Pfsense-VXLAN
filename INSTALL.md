@@ -1,8 +1,8 @@
 How to install VXLAN support to Pfsense:
 ----------------------------------------
-This repository is compatible with Pfsense CE 2.7.2
+This repository is compatible with Pfsense CE 2.8.0
 
-To install VXLAN on Pfsense CE 2.7.2 :
+To install VXLAN on Pfsense CE 2.8.0 :
 1) Copy the files from the "boot", "etc" and "usr" folder on corresponding folders on your Pfsense. This will modify existing files. You can also see the modification and apply it by hand on those file on your Pfsense for the diff between the first (original Pfsense files) and second commit.
 2) Modify your /boot/loader.conf file on Pfsense and add this line :
 if_vxlan_load="YES"
