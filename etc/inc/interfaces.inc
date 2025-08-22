@@ -1184,6 +1184,11 @@ function interface_is_type($if, $type) {
 			$entry = 'lagg';
 			$entif = 'laggif';
 			break;
+		case "vxlan":
+			$list = 'vxlans';
+			$entry = 'vxlan';
+			$entif = 'vxlanif';
+			break;			
 		default:
 			break;
 	}
@@ -1361,8 +1366,12 @@ function interface_gif_configure(&$gif, $gifkey = "", $flush = true) {
 	return $gifif;
 }
 
+/* NOTE: $vxlankey is not used but useful for passing this function to array_walk. */
+function interface_vxlan_configure(&$vxlan, $vxlankey = "", $flush = true) {
+}
+
 function interfaces_tunnel_configure($checkparent = 0, $realif = "", $type = "") {
-	if (!in_array($type, array('gre', 'gif'))) {
+	if (!in_array($type, array('gre', 'gif', 'vxlan'))) {
 		return;
 	}
 
@@ -1402,6 +1411,8 @@ function interfaces_tunnel_configure($checkparent = 0, $realif = "", $type = "")
 			interface_gif_configure($tunnel, "", false);
 		} elseif ($type == 'gre') {
 			interface_gre_configure($tunnel, "", false);
+		} elseif ($type == 'vxlan') {
+			interface_vxlan_configure($tunnel, "", false);
 		}
 	}
 
@@ -1652,6 +1663,8 @@ function interfaces_configure() {
 			$delayed_list[$if] = $ifname;
 		} elseif (strstr($realif, "gif")) {
 			$delayed_list[$if] = $ifname;
+		} elseif (strstr($realif, "vxlan")) {
+			$delayed_list[$if] = $ifname;
 		} elseif (strstr($realif, "ovpn")) {
 			continue;
 		} elseif (strstr($realif, "ipsec")) {
@@ -1697,6 +1710,9 @@ function interfaces_configure() {
 	/* set up GIF virtual interfaces */
 	interfaces_tunnel_configure(1,'','gif');
 
+	/* set up VXLAN virtual interfaces */
+	interfaces_tunnel_configure(1,'','vxlan');
+
 	/* set up BRIDGE virtual interfaces */
 	interfaces_bridge_configure(1);
 
@@ -1723,6 +1739,9 @@ function interfaces_configure() {
 
 	/* set up GIF virtual interfaces */
 	interfaces_tunnel_configure(2,'','gif');
+
+	/* set up VXLAN virtual interfaces */
+	interfaces_tunnel_configure(2,'','vxlan');
 
 	foreach ($delayed_list as $if => $ifname) {
 		if (is_platform_booting()) {
@@ -4323,6 +4342,10 @@ function interface_configure($interface = "wan", $reloadall = false, $linkupeven
 		$wantedmtu = 1280;
 	}
 
+	if (($wantedmtu == 0) && interface_is_type($mtuif, 'vxlan')) {
+		$wantedmtu = 1450;
+	}
+
 	/* Set the MTU to 1500 if no explicit MTU configured. */
 	if ($wantedmtu == 0) {
 		$wantedmtu = 1500; /* Default */
@@ -4387,7 +4410,7 @@ function interface_configure($interface = "wan", $reloadall = false, $linkupeven
 			break;
 		default:
 			/* XXX: Kludge for now related to #3280 */
-			if (!in_array($tunnelif, array("gif", "gre", "ovp", "ips", "l2t"))) {
+			if (!in_array($tunnelif, array("gif", "gre", "vxlan", "ovp", "ips", "l2t"))) {
 				if (is_ipaddrv4($wancfg['ipaddr']) && $wancfg['subnet'] <> "") {
 					pfSense_interface_setaddress($realif, "{$wancfg['ipaddr']}/{$wancfg['subnet']}");
 				}
@@ -4419,7 +4442,7 @@ function interface_configure($interface = "wan", $reloadall = false, $linkupeven
 			break;
 		default:
 			/* XXX: Kludge for now related to #3280 */
-			if (!in_array($tunnelif, array("gif", "gre", "ovp", "ips", "l2t"))) {
+			if (!in_array($tunnelif, array("gif", "gre", "vxlan", "ovp", "ips", "l2t"))) {
 				if (is_ipaddrv6($wancfg['ipaddrv6']) && $wancfg['subnetv6'] <> "") {
 					//pfSense_interface_setaddress($realif, "{$wancfg['ipaddrv6']}/{$wancfg['subnetv6']}");
 					// FIXME: Add IPv6 Support to the pfSense module
@@ -4447,6 +4470,11 @@ function interface_configure($interface = "wan", $reloadall = false, $linkupeven
 		if ($tunnelif != 'gif') {
 			$gif = link_interface_to_tunnelif($interface, 'gif');
 			array_walk($gif, 'interface_gif_configure');
+		}
+
+		if ($tunnelif != 'vxlan') {
+			$vxlan = link_interface_to_tunnelif($interface, 'vxlan');
+			array_walk($vxlan, 'interface_vxlan_configure');
 		}
 
 		$grouptmp = link_interface_to_group($interface);
@@ -6405,7 +6433,7 @@ function link_interface_to_tunnelif($interface, $type, $remote = 'any') {
 		return $result;
 	}
 
-	if (!in_array($type, array('gre', 'gif'))) {
+	if (!in_array($type, array('gre', 'gif', 'vxlan'))) {
 		return $result;
 	}
 
@@ -7577,7 +7605,7 @@ function create_interface_list($open = false) {
 }
 
 function is_pseudo_interface($inf, $tap=true) {
-	$psifs = array('ovpn', 'ipsec', 'l2tp', 'pptp', 'gif', 'gre', 'ppp', 'pppoe');
+	$psifs = array('ovpn', 'ipsec', 'l2tp', 'pptp', 'gif', 'gre', 'ppp', 'pppoe', 'vxlan');
 	foreach ($psifs as $pif) {
 		if (substr($inf, 0, strlen($pif)) == $pif) {
 			if (($pif == 'ovpn') && $tap) {

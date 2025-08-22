@@ -132,6 +132,9 @@ array_walk($gre, 'interface_gre_configure');
 $gif = link_interface_to_tunnelif($interface, 'gif', 'inet');
 array_walk($gif, 'interface_gif_configure');
 
+$vxlan = link_interface_to_tunnelif($interface, 'vxlan', 'inet');
+array_walk($vxlan, 'interface_vxlan_configure');
+
 /* reconfigure L2TP/PPTP tunnels, see https://redmine.pfsense.org/issues/12072 */ 
 $ppp = link_interface_to_ppp_tunnelif($interface);
 
@@ -183,6 +186,13 @@ foreach ($gif as $giftun) {
 }
 foreach ($gre as $gretun) {
 	$confif = convert_real_interface_to_friendly_interface_name($gretun['greif']);
+	if (!empty($confif)) {
+		interface_configure($confif);
+		system_routing_configure($confif);
+	}
+}
+foreach ($vxlan as $vxlantun) {
+	$confif = convert_real_interface_to_friendly_interface_name($vxlantun['vxlanif']);
 	if (!empty($confif)) {
 		interface_configure($confif);
 		system_routing_configure($confif);
