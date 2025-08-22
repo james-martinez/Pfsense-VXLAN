@@ -1,0 +1,301 @@
+#!/usr/local/bin/php-cgi -f
+<?php
+/*
+ * rc.newwanipv6
+ *
+ * part of pfSense (https://www.pfsense.org)
+ * Copyright (c) 2006-2013 BSD Perimeter
+ * Copyright (c) 2013-2016 Electric Sheep Fencing
+ * Copyright (c) 2014-2025 Rubicon Communications, LLC (Netgate)
+ * All rights reserved.
+ *
+ * Originally part of m0n0wall (http://m0n0.ch/wall)
+ * Copyright (c) 2003-2005 Manuel Kasper <mk@neon1.net>.
+ * All rights reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+/* parse the configuration and include all functions used below */
+require_once("globals.inc");
+require_once("config.inc");
+require_once("functions.inc");
+require_once("filter.inc");
+require_once("shaper.inc");
+require_once("ipsec.inc");
+require_once("vpn.inc");
+require_once("openvpn.inc");
+require_once("Net/IPv6.php");
+require_once("services.inc");
+require_once("rrd.inc");
+
+function restart_packages() {
+	global $oldipv6, $curwanipv6, $g;
+
+	/* restart packages */
+	log_error("{$g['product_label']} package system has detected an IP change or dynamic WAN reconnection - $oldipv6 -> $curwanipv6 - Restarting packages.");
+	send_event("service reload packages");
+}
+
+/* dhcp6c reasons: INFOREQ, REQUEST, RENEW, REBIND, RELEASE, EXIT */
+if (isset($_GET['reason'])) {
+	$reason = $_GET['reason'];
+} else {
+	$reason = trim($argv[4]);
+}
+
+/* Interface IP address has changed */
+if (isset($_GET['interface'])) {
+	$argument = $_GET['interface'];
+} else {
+	$argument = trim($argv[1], " \n\t");
+}
+
+if (!empty($reason) && ($reason != 'RENEW')) {
+	log_error("rc.newwanipv6: Info: starting on {$argument} due to {$reason}.");
+} else {
+	log_error("rc.newwanipv6: Info: starting on {$argument}.");
+}
+
+if (empty($argument)) {
+	$interface = "wan";
+	$interface_real = get_real_interface($interface, "inet6");
+	$curwanipv6 = get_interface_ipv6($interface, true);
+} else {
+	$interface_real = $argument;
+	$interface = convert_real_interface_to_friendly_interface_name($interface_real);
+	if (empty($interface)) {
+		log_error("Interface is unassigned, nothing to do.");
+		return;
+	}
+	$curwanipv6 = get_interface_ipv6($interface, true);
+}
+
+$interface_descr = convert_friendly_interface_to_friendly_descr($interface);
+
+if (empty($interface)) {
+	log_error("rc.newwanipv6 called with empty interface");
+	filter_configure();
+	return;
+}
+
+/*
+ * NOTE: Take care of openvpn and similar if you generate the event to reconfigure an interface.
+ *	i.e. OpenVPN might be in tap mode and not have an ip.
+ */
+if ((empty($curwanipv6) || !is_ipaddrv6($curwanipv6)) && substr($interface_real, 0, 4) != "ovpn") {
+	log_error("rc.newwanipv6: No IPv6 address found for interface {$interface_descr} [{$interface}].");
+	return;
+}
+
+$new_domain_name_servers_received = false;
+$new_searchdomains_received = false;
+
+if (isset($_GET['dmips'])) {
+	$new_domain_name_servers = $_GET['dmips'];
+} else {
+	$new_domain_name_servers = getenv("new_domain_name_servers");
+}
+
+if (!empty($new_domain_name_servers)) {
+	$new_domain_name_servers_received = true;
+	$name_servers = explode(" ", $new_domain_name_servers);
+	$valid_ns = array();
+	foreach ($name_servers as $ns) {
+		if (is_ipaddrv6(trim($ns))) {
+			$valid_ns[] = trim($ns);
+		}
+	}
+
+	$saved_name_servers = file_get_contents("{$g['varetc_path']}/nameserver_v6{$interface}");
+	if ($saved_name_servers !== false) {
+		$saved_name_servers = array_filter(explode(PHP_EOL, $saved_name_servers));
+		if ($saved_name_servers === $valid_ns) {
+			$new_domain_name_servers_received = false;
+		}
+	}
+
+	if ($new_domain_name_servers_received && count($valid_ns) > 0) {
+		file_put_contents("{$g['varetc_path']}/nameserver_v6{$interface}", implode("\n", $valid_ns));
+	}
+}
+if (isset($_GET['dmnames'])) {
+	$new_domain_name = $_GET['dmnames'];
+} else {
+	$new_domain_name = getenv("new_domain_name");
+}
+
+if (!empty($new_domain_name)) {
+	$new_searchdomains_received = true;
+	$saved_searchdomains = file_get_contents("{$g['varetc_path']}/searchdomain_v6{$interface}");
+	if (($saved_searchdomains !== false) && ($saved_searchdomains === $new_domain_name)) {
+		$new_searchdomains_received = false;
+	}
+
+	if ($new_searchdomains_received) {
+		file_put_contents("{$g['varetc_path']}/searchdomain_v6{$interface}", $new_domain_name);
+	}
+}
+
+/* write current WAN IPv6 to file */
+if (is_ipaddrv6($curwanipv6)) {
+	@file_put_contents(g_get('vardb_path') . "/{$interface_real}_ipv6", $curwanipv6);
+}
+
+$oldipv6 = '';
+if (file_exists(g_get('vardb_path') . "/{$interface_real}_cacheipv6")) {
+	$oldipv6 = file_get_contents(g_get('vardb_path') . "/{$interface_real}_cacheipv6");
+}
+
+/**
+ * @var bool Used for only taking action when the address is replaced.
+ */
+$address_replaced = true;
+if (($curwanipv6 == $oldipv6) && (substr($interface_real, 0, 4) != "ovpn")) {
+	/**
+	 * Reasons other than RENEW may replace the current address with the
+	 * same one causing the address to temporarily disappear - this is
+	 * also considered a change.
+	 */
+	switch ($reason) {
+		case 'RENEW':
+			$address_replaced = false;
+			break;
+		default:
+			break;
+	}
+}
+
+/**
+ * @var bool Used for only taking action when the DNS information changes.
+ */
+$dns_changed = (($reason == 'RENEW') && ($new_domain_name_servers_received || $new_searchdomains_received));
+
+// Only continue on RENEW if there has been a change.
+if (($reason == 'RENEW') && !$address_replaced && !$dns_changed) {
+	return;
+}
+
+if ($reason == 'RENEW') {
+	log_error("rc.newwanipv6: Info: received {$reason} on {$argument} (previous IP address: {$oldipv6}).");
+}
+log_error("rc.newwanipv6: on (IP address: {$curwanipv6}) (interface: {$interface}) (real interface: {$interface_real}).");
+
+if (($reason != 'RENEW') || $address_replaced) {
+	$grouptmp = link_interface_to_group($interface);
+	if (!empty($grouptmp)) {
+		array_walk($grouptmp, 'interface_group_add_member');
+	}
+
+	link_interface_to_track6($interface, "update");
+}
+
+if (($reason != 'RENEW') || $dns_changed) {
+	/* regenerate resolv.conf if DNS overrides are allowed */
+	system_resolvconf_generate(true);
+}
+
+/* reconfigure our gateway monitor, dpinger results need to be 
+ * available when configuring the default gateway */
+setup_gateways_monitor();
+
+/* reconfigure static routes (kernel may have deleted them) */
+system_routing_configure($interface);
+
+if (is_platform_booting()) {
+	// avoid race conditions in many of the below functions that occur during boot
+	touch("/tmp/{$interface_real}_dhcp6_complete");
+	exit;
+}
+
+/* signal filter reload */
+filter_configure();
+
+$srvupdate = true;
+if (empty($oldipv6) || is_ipaddrv6($oldipv6)) {
+	if (($curwanipv6 == $oldipv6) && !file_exists("{$g['tmp_path']}/{$interface}_upstart6")) {
+		// Still need to sync VPNs on PPPoE and such, as even with the same IP the VPN software is unhappy with the IP disappearing.
+		if (!in_array(config_get_path("interfaces/{$interface}/ipaddr"), array('pppoe', 'pptp', 'ppp'))) {
+			return;
+		} else {
+			$srvupdate = false;
+		}
+	} elseif (($reason != 'RENEW') && does_interface_exist($interface_real) && !empty($oldipv6)) {
+		/**
+		 * Don't call this on RENEW since dhcp6c already removes the old
+		 * address and adds the new one.
+		 */
+		mwexec("/sbin/ifconfig {$interface_real} inet6 {$oldipv6} delete");
+	}
+
+	file_put_contents(g_get('vardb_path') . "/{$interface_real}_cacheipv6", $curwanipv6);
+}
+
+if ($srvupdate) {
+	/* reload unbound */
+	services_unbound_configure(true, $interface);
+
+	/* perform RFC 2136 DNS update */
+	services_dnsupdate_process($interface);
+
+	/* signal dyndns update */
+	services_dyndns_configure($interface);
+}
+
+/* reconfigure IPsec tunnels */
+ipsec_force_reload($interface, 'inet6');
+
+/* start OpenVPN server & clients */
+if (substr($interface_real, 0, 4) != "ovpn") {
+	openvpn_resync_all($interface, 'inet6');
+}
+
+/* reconfigure GRE/GIF tunnels */
+$gre = link_interface_to_tunnelif($interface, 'gre', 'inet6');
+array_walk($gre, 'interface_gre_configure');
+
+$gif = link_interface_to_tunnelif($interface, 'gif', 'inet6');
+array_walk($gif, 'interface_gif_configure');
+
+foreach ($gif as $giftun) {
+	$confif = convert_real_interface_to_friendly_interface_name($giftun['gifif']);
+	if (!empty($confif)) {
+		interface_configure($confif);
+		system_routing_configure($confif);
+	}
+}
+foreach ($gre as $gretun) {
+	$confif = convert_real_interface_to_friendly_interface_name($gretun['greif']);
+	if (!empty($confif)) {
+		interface_configure($confif);
+		system_routing_configure($confif);
+	}
+}
+
+if ($srvupdate) {
+	/* reload graphing functions */
+	enable_rrd_graphing();
+
+	restart_packages();
+}
+
+unlink_if_exists("{$g['tmp_path']}/{$interface}_upstart6");
+if (empty(config_get_path("interfaces/{$interface}/ipaddr"))) {
+	unlink_if_exists("{$g['tmp_path']}/{$interface}_upstart4");
+}
+
+/* Unconditional filter reload to ensure the correct rules and gateways are
+ * active after this script has processed all changes.
+ * See https://redmine.pfsense.org/issues/13228 */
+filter_configure();
+?>
