@@ -1985,7 +1985,7 @@ function get_interface_list($mode = "active", $keyby = "physical", $vfaces = fal
 				'tun',
 				'lagg',
 				'vip',
-				'vxlan'
+				'vxlan',
 		);
 	} else {
 		$vfaces = array(
