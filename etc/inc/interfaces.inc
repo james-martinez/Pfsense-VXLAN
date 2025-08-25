@@ -1368,6 +1368,67 @@ function interface_gif_configure(&$gif, $gifkey = "", $flush = true) {
 
 /* NOTE: $vxlankey is not used but useful for passing this function to array_walk. */
 function interface_vxlan_configure(&$vxlan, $vxlankey = "", $flush = true) {
+	global $config, $g;
+	if (!is_array($vxlan)) {
+		return -1;
+	}
+	$realif = convert_friendly_interface_to_real_interface_name($vxlan['if']);
+	if (!interface_is_vlan($realif)) {
+		$realif = get_real_interface($vxlan['if']);
+	}
+	$realifip = get_interface_ip($vxlan['if']);
+	$realifip6 = get_interface_ipv6($vxlan['if']);
+	/* make sure the parent interface is up */
+	if ($realif) {
+		interfaces_bring_up($realif);
+	} else {
+		log_error(gettext("could not bring parentif up -- variable not defined -- interface_vxlan_configure()"));
+	}
+	/* Interface is defined */
+	if (platform_booting() || !(empty($vxlan['vxlanif']))) {
+		pfSense_interface_destroy($vxlan['vxlanif']);
+		pfSense_interface_create2($vxlan['vxlanif']);
+		$vxlanif = $vxlan['vxlanif'];
+	} else {
+		$vxlanif = pfSense_interface_create2("vxlan");
+	}
+	$ifconfigcmd = "/sbin/ifconfig " . escapeshellarg($vxlanif) .
+	    " vxlanid " .  escapeshellarg($vxlan['vxlanid']);
+	if (is_mcast($vxlan['remote-addr'])) {
+		$ifconfigcmd .= " vxlangroup " .
+		    escapeshellarg($vxlan['remote-addr']) . " vxlandev " .
+		    escapeshellarg($realif);
+	} else {
+		$ifconfigcmd .= " vxlanremote " .
+		    escapeshellarg($vxlan['remote-addr']);
+	}
+	if (is_ipaddrv6($vxlan['remote-addr']) && $realifip6) {
+		$ifconfigcmd .= " vxlanlocal " . escapeshellarg($realifip6);
+	} elseif (is_ipaddrv4($vxlan['remote-addr']) && $realifip) {
+		$ifconfigcmd .= " vxlanlocal " . escapeshellarg($realifip);
+	} else {
+		return;
+	}
+	if (!empty($vxlan['vxlanlocalport'])) {
+		$ifconfigcmd .= " vxlanlocalport " . escapeshellarg($vxlan['vxlanlocalport']);
+	}
+	if (!empty($vxlan['vxlanremoteport'])) {
+		$ifconfigcmd .= " vxlanremoteport " . escapeshellarg($vxlan['vxlanremoteport']);
+	}
+	if (!empty($vxlan['vxlanttl'])) {
+		$ifconfigcmd .= " vxlanttl " . escapeshellarg($vxlan['vxlanttl']);
+	}
+	if (isset($vxlan['vxlanlearn'])) {
+		$ifconfigcmd .= " vxlanlearn ";
+	} else {
+		$ifconfigcmd .= " -vxlanlearn ";
+	}
+	mwexec($ifconfigcmd);
+	if ($flush) {
+		get_interface_arr(true);
+	}
+	interfaces_bring_up($vxlanif);
+	return $vxlanif;
 }
 
 function interfaces_tunnel_configure($checkparent = 0, $realif = "", $type = "") {
