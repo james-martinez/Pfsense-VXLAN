@@ -1,11 +1,11 @@
 Pfsense VXLAN implementation:
 -----------------------------
-This is a repository to add VXLAN support to Pfsense (at the moment Pfsense CE 2.8.0 doesn't support VXLAN).
-In this repository you will find a kernel module enabling VXLAN support for Pfsense CE 2.8.0, and adding VXLAN support to the web GUI.
+This is a repository to add VXLAN support to Pfsense (at the moment Pfsense CE 2.8.x doesn't support VXLAN).
+In this repository you will find a kernel module enabling VXLAN support for Pfsense CE 2.8.0/2.8.1, and adding VXLAN support to the web GUI.
 
 Installation:
 -------------
-To install VXLAN on Pfsense CE 2.8.0, see INSTALL.md
+To install VXLAN on Pfsense CE 2.8.0/2.8.1, see INSTALL.md
 
 Build from sources:
 -------------------
