@@ -5,7 +5,7 @@
  * part of pfSense (https://www.pfsense.org)
  * Copyright (c) 2004-2013 BSD Perimeter
  * Copyright (c) 2013-2016 Electric Sheep Fencing
- * Copyright (c) 2014-2025 Rubicon Communications, LLC (Netgate)
+ * Copyright (c) 2014-2026 Rubicon Communications, LLC (Netgate)
  * All rights reserved.
  *
  * originally based on m0n0wall (http://m0n0.ch/wall)
@@ -48,6 +48,7 @@ require_once("openvpn.inc");
 require_once("captiveportal.inc");
 require_once("rrd.inc");
 require_once("interfaces_fast.inc");
+require_once("firewall_nat.inc");
 
 global $friendlyifnames;
 
@@ -96,12 +97,12 @@ foreach (config_get_path('gifs/gif', []) as $gif) {
 foreach (config_get_path('gres/gre', []) as $gre) {
 	$portlist[$gre['greif']] = $gre;
 	$portlist[$gre['greif']]['isgre'] = true;
-}
-
-/* add VXLAN interfaces */
+	/* add VXLAN interfaces */
 foreach (config_get_path('vxlans/vxlan', []) as $vxlan) {
 	$portlist[$vxlan['vxlanif']] = $vxlan;
 	$portlist[$vxlan['vxlanif']]['isvxlan'] = true;
+}
+
 }
 
 /* add LAGG interfaces */
@@ -305,8 +306,8 @@ if (isset($_REQUEST['add']) && isset($_REQUEST['if_add'])) {
 					}
 
 					if ((substr($ifport, 0, 3) == 'gre') ||
-					    (substr($ifport, 0, 5) == 'gif') ||
-						(substr($ifport, 0, 5) == 'vxlan')) {
+					    (substr($ifport, 0, 3) == 'gif') ||
+						(substr($ifport, 0, 3) == 'vxlan')) {
 						unset($this_if_config['ipaddr']);
 						unset($this_if_config['subnet']);
 						unset($this_if_config['ipaddrv6']);
@@ -368,9 +369,9 @@ if (isset($_REQUEST['add']) && isset($_REQUEST['if_add'])) {
 		} else if (!empty(link_interface_to_tunnelif($id, 'gre'))) {
 			$input_errors[] = gettext("The interface is part of a gre tunnel. Please delete the tunnel to continue");
 		} else if (!empty(link_interface_to_tunnelif($id, 'gif'))) {
-			$input_errors[] = gettext("The interface is part of a gif tunnel. Please delete the tunnel to continue");
 		} else if (!empty(link_interface_to_tunnelif($id, 'vxlan'))) {
 			$input_errors[] = gettext("The interface is part of a vxlan tunnel. Please delete the tunnel to continue");
+			$input_errors[] = gettext("The interface is part of a gif tunnel. Please delete the tunnel to continue");
 		} else if (interface_has_queue($id)) {
 			$input_errors[] = gettext("The interface has a traffic shaper queue configured.\nPlease remove all queues on the interface to continue.");
 		} else {
@@ -388,18 +389,14 @@ if (isset($_REQUEST['add']) && isset($_REQUEST['if_add'])) {
 				config_del_path("dhcpdv6/{$id}");
 				services_dhcpd_configure('inet6');
 			}
-
-			foreach (config_get_path('filter/rule', []) as $x => $rule) {
+			remove_filter_rules([], $id);
+			$rdr_rules_list = [];
+			foreach (get_anynat_rules_list('rdr') as $x => $rule) {
 				if ($rule['interface'] == $id) {
-					config_del_path("filter/rule/{$x}");
+					$rdr_rules_list[] = $x;
 				}
 			}
-		
-			foreach (config_get_path('nat/rule', []) as $x => $rule) {
-				if ($rule['interface'] == $id) {
-					config_del_path("nat/rule/{$x}/interface");
-				}
-			}
+			remove_rdr_rules($rdr_rules_list);
 
 			write_config(gettext('Interface assignment deleted'));
 
@@ -476,9 +473,9 @@ $tab_array[] = array(gettext("QinQs"), false, "interfaces_qinq.php");
 $tab_array[] = array(gettext("PPPs"), false, "interfaces_ppps.php");
 $tab_array[] = array(gettext("GREs"), false, "interfaces_gre.php");
 $tab_array[] = array(gettext("GIFs"), false, "interfaces_gif.php");
-$tab_array[] = array(gettext("VXLANs"), false, "interfaces_vxlan.php");
 $tab_array[] = array(gettext("Bridges"), false, "interfaces_bridge.php");
 $tab_array[] = array(gettext("LAGGs"), false, "interfaces_lagg.php");
+		$tab_array[] = array(gettext("VXLANs"), false, "interfaces_vxlan.php");
 display_top_tabs($tab_array);
 
 /*Generate the port select box only once.
