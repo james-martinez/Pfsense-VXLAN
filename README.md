@@ -1,11 +1,18 @@
 Pfsense VXLAN implementation:
 -----------------------------
-This is a repository to add VXLAN support to Pfsense (at the moment Pfsense CE 2.8.x doesn't support VXLAN).
-In this repository you will find a kernel module enabling VXLAN support for Pfsense CE 2.8.0/2.8.1, and adding VXLAN support to the web GUI.
+This is a repository to add VXLAN support to Pfsense CE. pfSense CE does not
+ship the `if_vxlan` kernel module by default, so this repo provides a compiled
+module plus the GUI edits needed to create and manage VXLAN interfaces.
+
+Supported versions:
+- **2.9.0** (current) — FreeBSD 16.0-CURRENT @ RELENG_2_9_0 / commit 4bdcff55436859420e090afb0e6932bab794baa4
+- 2.8.0/2.8.1 (legacy) — FreeBSD 13.x @ RELENG_2_7_2
+
+See the `2.8.1` branch for the older module and GUI edits.
 
 Installation:
 -------------
-To install VXLAN on Pfsense CE 2.8.0/2.8.1, see INSTALL.md
+To install VXLAN on pfSense CE 2.9.0, see INSTALL.md
 
 Build from sources:
 -------------------
@@ -17,4 +24,5 @@ Sources:
 
 [FreeBSD sources](https://github.com/freebsd/freebsd-src).
 
-[Old Pfsense commit retiring VXLAN support](https://github.com/pfsense/pfsense/commit/3856366b4fb3823d02108c0ee63043509a89e0db#diff-fd0fa0ced9988433dfb5aad36a981839ebe69aa0224a5b86210200706dc30c82).
+Note: pfSense Plus 25.11 (and later) ships VXLAN support natively, so this
+patch is only needed for pfSense CE, which does not enable `if_vxlan` by default.
