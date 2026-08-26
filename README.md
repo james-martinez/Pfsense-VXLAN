@@ -6,7 +6,7 @@ pfSense CE does not ship the FreeBSD `if_vxlan` kernel module or web interface m
 
 ## Supported versions
 
-- pfSense CE 2.9.0-DEVELOPMENT (branch `2.9.0` and `2.9.0-patch`)
+- pfSense CE 2.9.0-DEVELOPMENT (branch `2.9.0`)
   - Kernel module built from FreeBSD 16.0-CURRENT, commit `4bdcff554368`
 - pfSense CE 2.8.0 and 2.8.1 (branch `2.8.1`)
   - Kernel module built from FreeBSD 13.x, `RELENG_2_7_2`
@@ -21,7 +21,7 @@ The fastest way to install is with the pfSense System Patches package:
 2. Go to **System > Patches** and click **Add New Patch**.
 3. Set **URL/Commit ID** to:
    ```
-   https://raw.githubusercontent.com/james-martinez/Pfsense-VXLAN/2.9.0-patch/vxlan-2.9.0.patch
+   https://raw.githubusercontent.com/james-martinez/Pfsense-VXLAN/2.9.0/vxlan-2.9.0.patch
    ```
 4. Set **Path Strip Count** to `1`.
 5. Keep **Base Directory** as `/`.

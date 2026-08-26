@@ -22,7 +22,7 @@ The patch modifies the web interface and includes a base64-encoded copy of `if_v
    - **Description:** `VXLAN Support for pfSense CE 2.9.0`
    - **URL/Commit ID:**
      ```
-     https://raw.githubusercontent.com/james-martinez/Pfsense-VXLAN/2.9.0-patch/vxlan-2.9.0.patch
+     https://raw.githubusercontent.com/james-martinez/Pfsense-VXLAN/2.9.0/vxlan-2.9.0.patch
      ```
    - **Path Strip Count:** `1`
    - **Base Directory:** `/`
