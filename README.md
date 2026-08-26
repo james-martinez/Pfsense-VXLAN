@@ -1,28 +1,33 @@
-Pfsense VXLAN implementation:
------------------------------
-This is a repository to add VXLAN support to Pfsense CE. pfSense CE does not
-ship the `if_vxlan` kernel module by default, so this repo provides a compiled
-module plus the GUI edits needed to create and manage VXLAN interfaces.
+# pfSense CE VXLAN implementation
 
-Supported versions:
-- **2.9.0** (current) — FreeBSD 16.0-CURRENT @ commit 4bdcff55436859420e090afb0e6932bab794baa4
-- 2.8.0/2.8.1 (legacy) — FreeBSD 13.x @ RELENG_2_7_2
+Adds VXLAN tunnel support and GUI management to pfSense Community Edition. 
 
-See the `2.8.1` branch for the older module and GUI edits.
+pfSense CE does not include the `if_vxlan` kernel module or VXLAN web interface options. This repository provides the pre-compiled kernel module for FreeBSD 16-CURRENT and the pfSense PHP base system modifications to configure, assign, and manage VXLAN interfaces through the web GUI.
 
-Installation:
--------------
-To install VXLAN on pfSense CE 2.9.0, see INSTALL.md
+## Supported versions
 
-Build from sources:
--------------------
-If you want, you can build the kernel module from sources : see BUILD.md
+- **pfSense CE 2.9.0-DEVELOPMENT** (current branch `2.9.0` / `2.9.0-patch`)
+  - Kernel module built from FreeBSD 16.0-CURRENT @ commit `4bdcff554368`
+- **pfSense CE 2.8.0 / 2.8.1** (legacy branch `2.8.1`)
+  - Kernel module built from FreeBSD 13.x @ `RELENG_2_7_2`
 
-Sources:
---------
-[Pfsense sources](https://github.com/pfsense/FreeBSD-src).
+*Note: pfSense Plus 25.11 and later includes VXLAN natively. This repository targets pfSense CE.*
 
-[FreeBSD sources](https://github.com/freebsd/freebsd-src).
+## Installation
 
-Note: pfSense Plus 25.11 (and later) ships VXLAN support natively, so this
-patch is only needed for pfSense CE, which does not enable `if_vxlan` by default.
+See [INSTALL.md](INSTALL.md) for full instructions.
+
+### Quick start with System Patches
+
+1. Install the **System_Patches** package via pfSense Package Manager.
+2. In **System > Patches**, add a new patch with:
+   - **URL/Commit ID:** `https://raw.githubusercontent.com/james-martinez/Pfsense-VXLAN/2.9.0-patch/vxlan-2.9.0.patch`
+   - **Path Strip Count:** `1`
+   - **Base Directory:** `/`
+3. Click **Fetch**, test, and **Apply**.
+
+The kernel module self-extracts, loads, and sets boot persistence automatically when applied.
+
+## Building from source
+
+To compile the `if_vxlan.ko` kernel module yourself against FreeBSD sources, see [BUILD.md](BUILD.md).
