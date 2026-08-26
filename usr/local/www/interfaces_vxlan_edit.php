@@ -28,6 +28,8 @@
 
 require_once("guiconfig.inc");
 
+interface_vxlan_install_module();
+
 init_config_arr(array('vxlans', 'vxlan'));
 $a_vxlans = &$config['vxlans']['vxlan'];
 $id = $_REQUEST['id'];
