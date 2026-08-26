@@ -1,31 +1,36 @@
-To build the VXLAN kernel module:
----------------------------------
+# Building the VXLAN kernel module
 
-1) You need a FreeBSD machine (or VM). FreeBSD 15.x or newer works for building;
-   the module is stamped with the version from the source tree you clone below,
-   so it will load on pfSense CE 2.9.0's FreeBSD 16-CURRENT kernel regardless.
+Build `if_vxlan.ko` on a FreeBSD system or virtual machine. Building on FreeBSD 15.x or newer works. The module takes its version stamp from the source checkout, so it loads on pfSense CE 2.9.0 without issues.
 
-2) Clone the FreeBSD base sources at the exact commit pfSense CE 2.9.0 uses:
-   git clone https://github.com/freebsd/freebsd-src.git
-   cd freebsd-src
-   git checkout 4bdcff55436859420e090afb0e6932bab794baa4
-   (This is 16.0-CURRENT @ commit 4bdcff5, the base pfSense CE 2.9.0 ships.)
+## 1. Clone FreeBSD source code
 
-3) Build the module:
-   cd sys/modules/if_vxlan
-   make
+Clone the FreeBSD source tree at commit `4bdcff554368`, which matches pfSense CE 2.9.0:
 
-You will find the kernel module "if_vxlan.ko" file in /usr/obj/.
-See INSTALL.md to install it.
+```sh
+git clone https://github.com/freebsd/freebsd-src.git
+cd freebsd-src
+git checkout 4bdcff55436859420e090afb0e6932bab794baa4
+```
 
-Verify the module stamp before installing (must match __FreeBSD_version 1600018):
-   kldinfo -v /path/to/if_vxlan.ko
+## 2. Compile the module
 
-Legacy pfSense CE 2.8.0/2.8.1 :
----
-Build against FreeBSD 13.x sources instead:
-   git clone https://github.com/freebsd/freebsd-src.git
-   cd freebsd-src
-   git checkout <FreeBSD 13.x commit for your pfSense version>
-   cd sys/modules/if_vxlan && make
-See the 2.8.1 branch for older instructions.
+```sh
+cd sys/modules/if_vxlan
+make
+```
+
+The build writes `if_vxlan.ko` to `/usr/obj/`.
+
+## 3. Verify the version stamp
+
+Check that the module version matches `1600018`:
+
+```sh
+kldinfo -v /usr/obj/$(pwd)/if_vxlan.ko
+```
+
+See [INSTALL.md](INSTALL.md) to install the built module.
+
+## Legacy versions (pfSense 2.8.0 and 2.8.1)
+
+To build for pfSense 2.8.0 or 2.8.1, check out the FreeBSD 13.x source tree and compile `sys/modules/if_vxlan`. See the `2.8.1` branch for commit details.
