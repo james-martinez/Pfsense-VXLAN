@@ -2614,6 +2614,7 @@ function get_interface_list($mode = "active", $keyby = "physical", $vfaces = fal
 	if (!$vfaces) {
 		$vfaces = array(
 				'bridge',
+				'vxlan',
 				'ppp',
 				'pppoe',
 				'poes',
@@ -2634,11 +2635,11 @@ function get_interface_list($mode = "active", $keyby = "physical", $vfaces = fal
 				'tun',
 				'lagg',
 				'vip',
-				'vxlan',
 		);
 	} else {
 		$vfaces = array(
 				'bridge',
+				'vxlan',
 				'poes',
 				'sl',
 				'faith',
@@ -2654,7 +2655,6 @@ function get_interface_list($mode = "active", $keyby = "physical", $vfaces = fal
 				'lagg',
 				'vip',
 				'l2tps',
-				'vxlan',
 		);
 	}
 	switch ($mode) {

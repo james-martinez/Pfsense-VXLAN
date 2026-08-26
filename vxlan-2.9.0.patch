@@ -234,22 +234,22 @@
  			if ($portinfo['descr']) {
 --- a/etc/inc/util.inc
 +++ b/etc/inc/util.inc
-@@ -2634,6 +2634,7 @@
- 				'tun',
- 				'lagg',
- 				'vip',
+@@ -2614,6 +2614,7 @@
+ 	if (!$vfaces) {
+ 		$vfaces = array(
+ 				'bridge',
 +				'vxlan',
- 		);
+ 				'ppp',
+ 				'pppoe',
+ 				'poes',
+@@ -2638,6 +2639,7 @@
  	} else {
  		$vfaces = array(
-@@ -2653,6 +2654,7 @@
- 				'lagg',
- 				'vip',
- 				'l2tps',
+ 				'bridge',
 +				'vxlan',
- 		);
- 	}
- 	switch ($mode) {
+ 				'poes',
+ 				'sl',
+ 				'faith',
 @@ -3733,7 +3735,7 @@
  		foreach (config_get_path('interfaces', []) as $ifcfg) {
  			if (interface_is_vlan($ifcfg['if']) != NULL ||
