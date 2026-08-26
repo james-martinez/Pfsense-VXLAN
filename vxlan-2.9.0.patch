@@ -288,39 +288,29 @@
  	if (!empty($confif)) {
 --- a/usr/local/www/interfaces_assign.php
 +++ b/usr/local/www/interfaces_assign.php
-@@ -97,6 +97,12 @@
- foreach (config_get_path('gres/gre', []) as $gre) {
- 	$portlist[$gre['greif']] = $gre;
+@@ -99,6 +99,12 @@
  	$portlist[$gre['greif']]['isgre'] = true;
-+	/* add VXLAN interfaces */
+ }
+ 
++/* add VXLAN interfaces */
 +foreach (config_get_path('vxlans/vxlan', []) as $vxlan) {
 +	$portlist[$vxlan['vxlanif']] = $vxlan;
 +	$portlist[$vxlan['vxlanif']]['isvxlan'] = true;
 +}
 +
- }
- 
  /* add LAGG interfaces */
-@@ -300,7 +306,8 @@
- 					}
- 
- 					if ((substr($ifport, 0, 3) == 'gre') ||
--					    (substr($ifport, 0, 3) == 'gif')) {
-+					    (substr($ifport, 0, 3) == 'gif') ||
-+						(substr($ifport, 0, 3) == 'vxlan')) {
- 						unset($this_if_config['ipaddr']);
- 						unset($this_if_config['subnet']);
- 						unset($this_if_config['ipaddrv6']);
-@@ -362,6 +369,8 @@
- 		} else if (!empty(link_interface_to_tunnelif($id, 'gre'))) {
+ foreach (config_get_path('laggs/lagg', []) as $lagg) {
+ 	$portlist[$lagg['laggif']] = $lagg;
+@@ -363,6 +369,8 @@
  			$input_errors[] = gettext("The interface is part of a gre tunnel. Please delete the tunnel to continue");
  		} else if (!empty(link_interface_to_tunnelif($id, 'gif'))) {
+ 			$input_errors[] = gettext("The interface is part of a gif tunnel. Please delete the tunnel to continue");
 +		} else if (!empty(link_interface_to_tunnelif($id, 'vxlan'))) {
 +			$input_errors[] = gettext("The interface is part of a vxlan tunnel. Please delete the tunnel to continue");
- 			$input_errors[] = gettext("The interface is part of a gif tunnel. Please delete the tunnel to continue");
  		} else if (interface_has_queue($id)) {
  			$input_errors[] = gettext("The interface has a traffic shaper queue configured.\nPlease remove all queues on the interface to continue.");
-@@ -466,6 +475,7 @@
+ 		} else {
+@@ -466,6 +474,7 @@
  $tab_array[] = array(gettext("GIFs"), false, "interfaces_gif.php");
  $tab_array[] = array(gettext("Bridges"), false, "interfaces_bridge.php");
  $tab_array[] = array(gettext("LAGGs"), false, "interfaces_lagg.php");

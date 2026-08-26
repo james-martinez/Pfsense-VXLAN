@@ -97,12 +97,12 @@ foreach (config_get_path('gifs/gif', []) as $gif) {
 foreach (config_get_path('gres/gre', []) as $gre) {
 	$portlist[$gre['greif']] = $gre;
 	$portlist[$gre['greif']]['isgre'] = true;
-	/* add VXLAN interfaces */
+}
+
+/* add VXLAN interfaces */
 foreach (config_get_path('vxlans/vxlan', []) as $vxlan) {
 	$portlist[$vxlan['vxlanif']] = $vxlan;
 	$portlist[$vxlan['vxlanif']]['isvxlan'] = true;
-}
-
 }
 
 /* add LAGG interfaces */
@@ -306,8 +306,7 @@ if (isset($_REQUEST['add']) && isset($_REQUEST['if_add'])) {
 					}
 
 					if ((substr($ifport, 0, 3) == 'gre') ||
-					    (substr($ifport, 0, 3) == 'gif') ||
-						(substr($ifport, 0, 3) == 'vxlan')) {
+					    (substr($ifport, 0, 3) == 'gif')) {
 						unset($this_if_config['ipaddr']);
 						unset($this_if_config['subnet']);
 						unset($this_if_config['ipaddrv6']);
@@ -369,9 +368,9 @@ if (isset($_REQUEST['add']) && isset($_REQUEST['if_add'])) {
 		} else if (!empty(link_interface_to_tunnelif($id, 'gre'))) {
 			$input_errors[] = gettext("The interface is part of a gre tunnel. Please delete the tunnel to continue");
 		} else if (!empty(link_interface_to_tunnelif($id, 'gif'))) {
+			$input_errors[] = gettext("The interface is part of a gif tunnel. Please delete the tunnel to continue");
 		} else if (!empty(link_interface_to_tunnelif($id, 'vxlan'))) {
 			$input_errors[] = gettext("The interface is part of a vxlan tunnel. Please delete the tunnel to continue");
-			$input_errors[] = gettext("The interface is part of a gif tunnel. Please delete the tunnel to continue");
 		} else if (interface_has_queue($id)) {
 			$input_errors[] = gettext("The interface has a traffic shaper queue configured.\nPlease remove all queues on the interface to continue.");
 		} else {
